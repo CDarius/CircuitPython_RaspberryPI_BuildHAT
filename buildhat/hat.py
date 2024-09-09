@@ -1,5 +1,5 @@
+import io
 import sys
-import board
 import busio
 import time
 import digitalio
@@ -143,14 +143,14 @@ class Hat:
             if self._debug and line:
                 print(line)
 
-            if line.startswith(_FIRMWARE):
+            if line and line.startswith(_FIRMWARE):
                 hat_version = line[len(_FIRMWARE) :].split(" ")
                 file_version = self._get_firmware_file_version()
                 if int(hat_version[0]) == file_version:
                     status = "firmare_ok"
                 else:
                     status = "need_new_firmware"
-            elif line.startswith(_BOOTLOADER):
+            elif line and line.startswith(_BOOTLOADER):
                 status = "bootloader"
             elif attempt == 0:
                 if not line:
@@ -200,9 +200,12 @@ class Hat:
         firmware_file = f"{firmware_folder}/firmware.bin"
         signature_file = f"{firmware_folder}/signature.bin"
 
+        # Calculate file leght and checksum
+        if self._debug:
+            print("Calculating firmware checksum...")
         try:
             with open(firmware_file, "rb") as f:
-                firm = f.read()
+                fimware_len, firmware_checksum = self._checksum(f)
         except Exception as e:
             raise Exception(
                 f"Build Hat firmare load failed: failed to read '{firmware_file}'"
@@ -210,15 +213,19 @@ class Hat:
 
         # Load firmaware file in the hat
         if self._debug:
-            print("Loading firmware int the hat...")
+            print("Loading firmware into the hat...")
         try:
             self._serial.write(b"clear\r")
             self._get_prompt()
-            self._serial.write(f"load {len(firm)} {self._checksum(firm)}\r".encode())
+            self._serial.write(f"load {fimware_len} {firmware_checksum}\r".encode())
             time.sleep(0.1)
             # STX = 0x02
             self._serial.write(b"\x02")
-            self._serial.write(firm)
+            with open(firmware_file, "rb") as f:
+                data = f.read(1024)
+                while len(data) > 0:
+                    self._serial.write(data)
+                    data = f.read(1024)
             # ETX = 0x03
             self._serial.write(b"\x03\r")
             self._get_prompt()
@@ -226,8 +233,6 @@ class Hat:
             raise Exception(
                 "Build Hat firmare load failed: failed to load fimware file in the hat"
             ) from e
-        finally:
-            del firm
 
         try:
             with open(signature_file, "rb") as f:
@@ -248,10 +253,19 @@ class Hat:
             self._serial.write(sig)
             # ETX = 0x03
             self._serial.write(b"\x03\r")
-            self._get_prompt()
         except Exception as e:
             raise Exception(
                 "Build Hat firmare load failed: failed to load signature file in the hat"
+            ) from e
+
+        # Wait for build hat serial prompt
+        if self._debug:
+            print("Wait for hat serial pomprt ...")
+        try:
+            self._get_prompt()
+        except Exception as e:
+            raise Exception(
+                "Build Hat firmare load failed: failed to reach serial prompt"
             ) from e
 
         # Reboot the hat and wait for done message
@@ -268,20 +282,28 @@ class Hat:
         if self._debug:
             print("Firmware loading completed")
 
-    def _checksum(self, data):
+    def _checksum(self, file: io.FileIO):
         """Calculate checksum from data
 
-        :param data: Data to calculate the checksum from
-        :return: Checksum that has been calculated
+        :param file: File to calculate the checksum from
+        :return: File lenght in bytes and file checksum
         """
-        u = 1
-        for i in range(0, len(data)):
-            if (u & 0x80000000) != 0:
-                u = (u << 1) ^ 0x1D872B41
-            else:
-                u = u << 1
-            u = (u ^ data[i]) & 0xFFFFFFFF
-        return u
+        file_lenght = 0
+        checksum = 1
+
+        file.seek(0)
+        data = file.read(1024)
+        while len(data) > 0:
+            file_lenght += len(data)
+            for i in range(0, len(data)):
+                if (checksum & 0x80000000) != 0:
+                    checksum = (checksum << 1) ^ 0x1D872B41
+                else:
+                    checksum = checksum << 1
+                checksum = (checksum ^ data[i]) & 0xFFFFFFFF
+            data = file.read(1024)
+
+        return (file_lenght, checksum)
 
     def readline(self, skip=None) -> str | None:
         """Read data from the serial port of Build HAT
@@ -317,7 +339,11 @@ class Hat:
         start_time = time.monotonic_ns()
         timeout_ns = timeout_ms * 1e6
         while True:
-            line = self.readline()
+            try:
+                line = self.readline()
+            except:
+                line = None
+
             if line and line.startswith(message):
                 break
             if timeout_ns > 0:

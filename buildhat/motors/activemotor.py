@@ -259,12 +259,10 @@ class ActiveMotor(ActiveDevice, Motor):
             if not self._is_connected:
                 raise Exception("Motor is not anymore connected")
 
-            # Wait to reach the position tolerance
+            # Restart the PID if the position tollerance has not been reached
             newpos_deg = int(newpos * 360.0)
-            while (
-                abs(newpos_deg - self._actual_position) > self._run_position_tolerance
-            ):
-                await asyncio.sleep(0.1)
+            if abs(newpos_deg - self._actual_position) > self._run_position_tolerance:
+                self._run_positional_ramp(self._actual_position / 360, newpos, speed, blocking)
 
             if self._release_after_run:
                 self.coast()
@@ -347,7 +345,7 @@ class ActiveMotor(ActiveDevice, Motor):
         """Run motor for N seconds
 
         :param seconds: Running time in seconds
-        :param speed: Speed ranging from -1 to 1 or run_command_default_speed if None
+        :param speed: Speed in run_command_speed_unit
         :param blocking: Whether call should block till finished
         """
         self.ensure_connected()
@@ -362,15 +360,21 @@ class ActiveMotor(ActiveDevice, Motor):
         speed *= self._reverse_direction_factor
         speed = self._normalize_speed(speed)
         kp, ki, kd = self._speed_pid_value
-        # scale unwap kp ki kd windup deadzone
-        pid = f"pid_diff {self.port} 0 5 s2 0.0027777778 1 {kp} {ki} {kd} .4 0.01"
+        if self._has_absolute_position:
+            # scale unwap kp ki kd windup deadzone
+            pid = f"pid_diff {self.port} 0 5 s2 0.0027777778 1 {kp} {ki} {kd} .4 0.01"
+        else:
+            # change speed unit to deca degrees/second
+            speed *=36
+            # scale unwap kp ki kd windup deadzone
+            pid = f"pid {self.port} 0 0 s1 1 0 0.003 0.01 0 100 0.01"
         cmd = f"port {self.port} ; select 0 ; selrate {self._data_update_interval}; {pid} ; set pulse {speed} 0.0 {seconds} 0\r"
         self.hat.serial.write(cmd)
 
         if blocking:
             await self._run_lock.acquire()
             self.hat.push_device_message_handle(self, self._parse_pulse_done_message)
-            # Wait for the lock to be released by _parse_ramp_done_message
+            # Wait for the lock to be released by _parse_pulse_done_message
             async with self._run_lock:
                 pass
             if not self._is_connected:
@@ -382,7 +386,7 @@ class ActiveMotor(ActiveDevice, Motor):
     def start(self, speed: float | None = None):
         """Start motor
 
-        :param speed: Speed ranging from -100 to 100
+        :param speed: Speed in run_command_speed_unit
         """
         if speed is None:
             speed = self._run_default_speed
@@ -390,8 +394,14 @@ class ActiveMotor(ActiveDevice, Motor):
         speed *= self._reverse_direction_factor
         speed = self._normalize_speed(speed)
         kp, ki, kd = self._speed_pid_value
-        # scale unwap kp ki kd windup deadzone
-        pid = f"pid_diff {self.port} 0 5 s2 0.0027777778 1 {kp} {ki} {kd} .4 0.01"
+        if self._has_absolute_position:
+            # scale unwap kp ki kd windup deadzone
+            pid = f"pid_diff {self.port} 0 5 s2 0.0027777778 1 {kp} {ki} {kd} .4 0.01"
+        else:
+            # change speed unit to deca degrees/second
+            speed *=36
+            # scale unwap kp ki kd windup deadzone
+            pid = f"pid {self.port} 0 0 s1 1 0 0.003 0.01 0 100 0.01"
         cmd = f"port {self.port} ; select 0 ; selrate {self._data_update_interval}; {pid} ; set {speed}\r"
         self.hat.serial.write(cmd)
 

@@ -19,7 +19,7 @@ class Motor(Device):
         When the message is found, release the run lock
         """
         msg = f"P{self._port}{_RAMP_DONE}"
-        if line.startswith(msg):
+        if line.startswith(msg) and self._run_lock.locked():
             self._run_lock.release()
             return True
 
@@ -30,7 +30,7 @@ class Motor(Device):
         When the message is found, release the run lock
         """
         msg = f"P{self._port}{_PULSE_DONE}"
-        if line.startswith(msg):
+        if line.startswith(msg) and self._run_lock.locked():
             self._run_lock.release()
             return True
 

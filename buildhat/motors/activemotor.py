@@ -45,7 +45,8 @@ class ActiveMotor(ActiveDevice, Motor):
 
     def deinit(self) -> None:
         super().deinit()
-        self._run_lock.release()
+        if self._read_lock.locked():
+            self._run_lock.release()
 
     @property
     def power_limit(self) -> float:
@@ -159,7 +160,7 @@ class ActiveMotor(ActiveDevice, Motor):
     async def run_for_rotations(
         self, rotations: int | float, speed: float | None = None, blocking: bool = True
     ):
-        """Run motor for N rotations
+        """Run motor for N rotations (position PID close loop)
 
         :param rotations: Number of rotations
         :param speed: Speed in run_command_speed_unit
@@ -173,7 +174,7 @@ class ActiveMotor(ActiveDevice, Motor):
     async def run_for_degrees(
         self, degrees: int | float, speed: float | None = None, blocking: bool = True
     ):
-        """Run motor for N degrees
+        """Run motor for N degrees (position PID close loop)
 
         :param degrees: Number of degrees to rotate
         :param speed: Speed in run_command_speed_unit
@@ -200,7 +201,7 @@ class ActiveMotor(ActiveDevice, Motor):
         speed: float | None = None,
         blocking: bool = True,
     ):
-        """Run motor until reach the target position
+        """Run motor until reach the target position (position PID close loop)
 
         :param target_position: Position to reach in degrees
         :param speed: Speed in run_command_speed_unit
@@ -295,7 +296,7 @@ class ActiveMotor(ActiveDevice, Motor):
         blocking: bool = True,
         direction: Direction = Direction.SHORTEST,
     ):
-        """Run motor to an absolute angle
+        """Run motor to an absolute angle (position PID close loop)
 
         :param angle: Position in degrees from -180 to 180
         :param speed: Speed ranging from 0 to 100
@@ -342,7 +343,7 @@ class ActiveMotor(ActiveDevice, Motor):
     async def run_for_seconds(
         self, seconds: float, speed: float | None = None, blocking: bool = True
     ):
-        """Run motor for N seconds
+        """Run motor for N seconds (speed PID close loop)
 
         :param seconds: Running time in seconds
         :param speed: Speed in run_command_speed_unit
@@ -384,7 +385,7 @@ class ActiveMotor(ActiveDevice, Motor):
                 self.coast()
 
     def start(self, speed: float | None = None):
-        """Start motor
+        """Start motor (speed PID close loop)
 
         :param speed: Speed in run_command_speed_unit
         """
@@ -427,6 +428,10 @@ class ActiveMotor(ActiveDevice, Motor):
         self.hat.serial.write(f"port {self._port} ; pwmparams {pwmthresh} {minpwm}\r")
 
     def pwm(self, speed: int | float) -> None:
+        """Start the motor (open loop)
+
+        :param speed: PWM value. Range -1 to 1
+        """
         if (
             (not isinstance(speed, int) and not isinstance(speed, float))
             or speed < -1

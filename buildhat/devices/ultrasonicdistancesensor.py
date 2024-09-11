@@ -1,14 +1,6 @@
-import asyncio
-
 import buildhat.hat
 from ..models.devicetype import DeviceType
 from ..activedevice import ActiveDevice
-
-try:
-    from typing import List, Tuple
-except ImportError:
-    pass
-
 
 class UltrasonicDistanceSensor(ActiveDevice):
     """Distance sensor
@@ -27,7 +19,7 @@ class UltrasonicDistanceSensor(ActiveDevice):
 
     @property
     def distance(self) -> int:
-        """Distance in cm"""
+        """Distance in mm"""
         return self._distance
 
     def eyes(self, *args: int) -> None:

@@ -124,7 +124,7 @@ class ColorDistanceSensor(ActiveDevice):
         self.ensure_connected()
         self.select_read_mode(1)  # PROX
 
-        return await self._wait_for_one_update()
+        return (await self._wait_for_one_update())[0]
 
     async def get_counter(self) -> int:
         """Return the counted object
@@ -134,7 +134,7 @@ class ColorDistanceSensor(ActiveDevice):
         self.ensure_connected()
         self.select_read_mode(2)  # COUNT
 
-        return await self._wait_for_one_update()
+        return (await self._wait_for_one_update())[0]
 
     def set_color(self, color: Color) -> None:
         """Set the led color. No measures performed in this mode
@@ -173,4 +173,5 @@ class ColorDistanceSensor(ActiveDevice):
         """BuildHat call this function when there is a device value update from a combo mode"""
         if mode == self._selected_read_mode:
             self._last_read = value
-            self._read_lock.release()
+            if self._read_lock.locked():
+                self._read_lock.release()

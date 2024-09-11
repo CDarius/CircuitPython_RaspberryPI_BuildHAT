@@ -136,7 +136,8 @@ class Hat:
     def _init_hat(self) -> None:
         # Check if we're in the bootloader or the firmware
         status = ""
-        attempt = 2
+        attempt = 10
+        self._serial.reset_input_buffer()
         self._serial.write(b"version\r")
         while not status:
             line = self.readline(skip="version")
@@ -359,7 +360,11 @@ class Hat:
         """Process all the incoming messages from the hat"""
         while self._serial.in_waiting:
             line = self.readline()
-            self._process_message(line)
+            try:
+                self._process_message(line)
+            except:
+                if self._debug:
+                    print(f"FAILED TO PROCESS INCOMING MESSAGE: {line}")
 
     def _process_message(self, line: str) -> None:
         processed = True
@@ -446,21 +451,18 @@ class Hat:
                     processed = False
 
         elif line[0] == "P" and (line[2] == "C" or line[2] == "M"):
-            try:
-                header, values = line.split(":")
-                port = int(header[1])
-                iscombi = header[2] == "C"
-                mode = int(header[3:])
-                device = self._connected_devices[port]
-                if isinstance(device, buildhat.activedevice.ActiveDevice):
-                    if iscombi:
-                        values = [v for v in values.split(" ") if v]
-                        device.on_combi_value_update(mode, values)
-                    else:
-                        value = values.strip()
-                        device.on_single_value_update(mode, value)
-            except:
-                pass
+            header, values = line.split(":")
+            port = int(header[1])
+            iscombi = header[2] == "C"
+            mode = int(header[3:])
+            device = self._connected_devices[port]
+            if isinstance(device, buildhat.activedevice.ActiveDevice):
+                if iscombi:
+                    values = [v for v in values.split(" ") if v]
+                    device.on_combi_value_update(mode, values)
+                else:
+                    value = values.strip()
+                    device.on_single_value_update(mode, value)
         else:
             processed = False
 
@@ -481,7 +483,8 @@ class Hat:
                 and line.endswith(" V")
             ):
                 self._last_vin_read = float(line.split(" ")[0])
-                self._vin_lock.release()
+                if self._vin_lock.locked():
+                    self._vin_lock.release()
                 return
 
         if self._debug:

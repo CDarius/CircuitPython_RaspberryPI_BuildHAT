@@ -188,4 +188,5 @@ class ColorSensor(ActiveDevice):
         """BuildHat call this function when there is a device value update from a combo mode"""
         if mode == self._selected_read_mode:
             self._last_read = value
-            self._read_lock.release()
+            if self._read_lock.locked():
+                self._read_lock.release()

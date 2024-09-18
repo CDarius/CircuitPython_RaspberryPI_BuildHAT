@@ -42,7 +42,7 @@ classifiers = [
 dynamic = ["dependencies", "optional-dependencies"]
 
 [tool.setuptools]
-py-modules = ["buildhat"]
+packages = ["buildhat"]
 
 [tool.setuptools.dynamic]
 dependencies = {file = ["requirements.txt"]}

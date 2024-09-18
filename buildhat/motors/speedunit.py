@@ -1,13 +1,18 @@
+# SPDX-FileCopyrightText: Copyright (c) 2024 Dario Cammi
+#
+# SPDX-License-Identifier: MIT
+
 from ..models.enumstr import EnumStr
 
 
 class SpeedUnit(EnumStr):
-    """Motor speed unit"""
+    """Motor speed unit enum"""
 
-    """Revolution per minute"""
     RPM = None
-    """Degree per seconds"""
+    """Revolution per minute"""
+
     DGS = None
+    """Degree per seconds"""
 
 
 SpeedUnit.RPM = SpeedUnit("RPM")

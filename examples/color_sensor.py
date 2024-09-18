@@ -1,10 +1,16 @@
-'''
+# SPDX-FileCopyrightText: Copyright (c) 2024 Dario Cammi
+#
+# SPDX-License-Identifier: MIT
+
+"""
 Test code for color sensor
 Part number: 6217705
-'''
+"""
+
+import asyncio
 
 import board
-import asyncio
+
 from buildhat.hat import Hat
 
 sensor_port = 0
@@ -18,14 +24,17 @@ reset_pin = board.GP23
 buildhat = Hat(tx=tx_pin, rx=rx_pin, reset=reset_pin, debug=True)
 
 stop = False
+
+
 async def buildhat_loop(hat):
     while not stop:
         hat.update()
         await asyncio.sleep(0)
 
+
 async def read_loop(hat):
     sensor = buildhat.get_device(sensor_port)
-    
+
     while not stop:
         color = await sensor.get_color()
         print(f"Color: {color}")
@@ -39,11 +48,13 @@ async def read_loop(hat):
         sensor.on()
         print(f"Sensor on")
         await asyncio.sleep(1)
-                
+
+
 async def main():
     buildhat_loop_task = asyncio.create_task(buildhat_loop(buildhat))
     read_loop_task = asyncio.create_task(read_loop(buildhat))
-    
+
     await asyncio.gather(buildhat_loop_task, read_loop_task)
-    
+
+
 asyncio.run(main())

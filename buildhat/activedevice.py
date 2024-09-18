@@ -1,17 +1,21 @@
+# SPDX-FileCopyrightText: Copyright (c) 2024 Dario Cammi
+#
+# SPDX-License-Identifier: MIT
+
 import sys
 import traceback
 
-import buildhat.hat
 from .device import Device
+from .hatserialcomm import HatSerialCommunication
 from .models.combimodes import CombiModes
 from .models.devicetype import DeviceType
-from .models.modedetails import ModeDetails
 from .models.minmaxvalue import MinMaxValue
+from .models.modedetails import ModeDetails
 from .models.modetypevalue import ModeTypeValue
 
 try:
     from typing import Dict, List
-except:
+except ImportError:
     pass
 
 _DETAILS_TYPE_ACTIVE = "type "
@@ -24,7 +28,13 @@ _DETAILS_UNIT = " SI = "
 
 
 class ActiveDevice(Device):
-    def __init__(self, hat: buildhat.hat.Hat, port: str, type: DeviceType):
+    """A generic Lego® active device (motor, color sensor, distance sensor, etc..)
+
+    Active devices can send and receive data: speed values, pid parameters, etc...
+    The list of the data items readeable and writables are the device modes.
+    """
+
+    def __init__(self, hat: HatSerialCommunication, port: int, type: int):
         super().__init__(hat, port, type)
 
         self._baudrate = None
@@ -54,9 +64,7 @@ class ActiveDevice(Device):
             self.hat.serial.write(f"port {self.port}; combi {c.number}\r")
 
         if self._hat.debug:
-            print(
-                f"  Baudrate={self._baudrate}, HW ver={self._hardware_version}, SW ver={self._software_version}"
-            )
+            print(f"  Baudrate={self._baudrate}, HW ver={self._hardware_version}, SW ver={self._software_version}")
             mode_list = [x.name for x in self._mode_details]
             print(f"  Num modes={len(self._mode_details)} {mode_list}")
             if self._combi_modes:
@@ -66,17 +74,17 @@ class ActiveDevice(Device):
 
     @property
     def baudrate(self) -> int | None:
-        """Sensor communication speed"""
+        """Return sensor communication speed in baud/sec"""
         return self._baudrate
 
     @property
     def hardware_version(self) -> int | None:
-        """Sensor hardware version"""
+        """Return sensor hardware version"""
         return self._hardware_version
 
     @property
     def software_version(self) -> int | None:
-        """Sensor software verion"""
+        """Return sensor software verion"""
         return self._software_version
 
     @property
@@ -94,8 +102,11 @@ class ActiveDevice(Device):
     def select_read_mode(self, mode: CombiModes | int) -> None:
         """Select a continuos read for combimode or single mode
 
-        :param modev: A CombiMode or a single mode number
+        :param mode: A CombiMode or a single mode number
         :return: True if mode has been changed or False if mode was already selected
+
+        When mode in an ``int`` a single read mode is selected. When mode is an instance
+        of ``CombiModes`` a multiple (combi) read mode is selected
         """
         self.ensure_connected()
         if self._selected_read_mode == mode:
@@ -106,9 +117,7 @@ class ActiveDevice(Device):
 
         # Deconfigure the previous combi mode
         if isinstance(self._selected_read_mode, CombiModes):
-            self.hat.serial.write(
-                f"port {self.port} ; combi {self._selected_read_mode.number}\r"
-            )
+            self.hat.serial.write(f"port {self.port} ; combi {self._selected_read_mode.number}\r")
             self._selected_read_mode = None
 
         if isinstance(mode, CombiModes):
@@ -119,9 +128,7 @@ class ActiveDevice(Device):
             )
             self._selected_read_mode = mode
         elif isinstance(mode, int):
-            self.hat.serial.write(
-                f"port {self.port} ; select {mode} ; selrate {self._data_update_interval}\r"
-            )
+            self.hat.serial.write(f"port {self.port} ; select {mode} ; selrate {self._data_update_interval}\r")
             self._selected_read_mode = mode
         else:
             raise ValueError("Invalid mode argument")
@@ -214,17 +221,13 @@ class ActiveDevice(Device):
 
             # expect: RAW: 00000000 00000064    PCT: 00000000 00000064    SI: 00000000 00000064
             line = self._hat.readline()
-            raw_min_max = MinMaxValue(
-                ModeTypeValue.RAW, min=int(line[9:17], 16), max=int(line[18:26], 16)
-            )
+            raw_min_max = MinMaxValue(ModeTypeValue.RAW, min=int(line[9:17], 16), max=int(line[18:26], 16))
             percent_min_max = MinMaxValue(
                 ModeTypeValue.PERCENT,
                 min=int(line[35:43], 16),
                 max=int(line[44:54], 16),
             )
-            signal_min_max = MinMaxValue(
-                ModeTypeValue.SIGNAL, min=int(line[60:68], 16), max=int(line[69:77], 16)
-            )
+            signal_min_max = MinMaxValue(ModeTypeValue.SIGNAL, min=int(line[60:68], 16), max=int(line[69:77], 16))
 
             mode_details = ModeDetails(
                 mode_number,
@@ -272,9 +275,7 @@ class ActiveDevice(Device):
         """BuildHat call this function when there is a device value update from a single mode"""
         pass
 
-    def _decode_combi_update(
-        self, combi_num: int, values: List[str]
-    ) -> Dict[ModeDetails, str] | None:
+    def _decode_combi_update(self, combi_num: int, values: List[str]) -> Dict[ModeDetails, str] | None:
         """Decode a combi value update and return a dictionary with a ModeDetails and value pairs"""
         combi = self._selected_read_mode
         if isinstance(combi, CombiModes):

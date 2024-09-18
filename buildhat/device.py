@@ -1,9 +1,21 @@
-import buildhat.hat
+# SPDX-FileCopyrightText: Copyright (c) 2024 Dario Cammi
+#
+# SPDX-License-Identifier: MIT
+"""
+`Device`
+"""
+
+from .hatserialcomm import HatSerialCommunication
 from .models.devicetype import DeviceType
 
 
 class Device:
-    def __init__(self, hat: buildhat.hat.Hat, port: str, type: DeviceType):
+    """A generic Lego® device (motor, color sensor, distance sensor, etc..)
+
+    It can be either a passive device on an active device
+    """
+
+    def __init__(self, hat: HatSerialCommunication, port: int, type: int):
         self._hat = hat
         self._port = port
         self._type = type
@@ -16,30 +28,37 @@ class Device:
         try:
             if self._is_connected:
                 self.off()
-        except:
+        except ImportError:
             pass
 
         self._is_connected = False
 
     @property
-    def hat(self) -> buildhat.hat.Hat:
+    def hat(self) -> HatSerialCommunication:
+        """Return a Build HAT instace"""
         return self._hat
 
     @property
     def port(self) -> str:
+        """Return the hat port where the device is connected"""
         return self._port
 
     @property
-    def type(self) -> DeviceType:
+    def type(self) -> int:
+        """Return the device type it
+
+        See :py:class:`DeviceType<buildhat.models.devicetype.DeviceType>`
+        """
         return self._type
 
     @property
     def is_connected(self) -> bool:
-        "True when the sensor is connected at th build hat"
+        """Return `True` when the device is connected at th build hat or `False` when it disconnected"""
         return self._is_connected
 
     @property
     def name(self) -> str:
+        """Return the device name"""
         return DeviceType.get_name(self._type)
 
     def on_disconnect(self) -> None:
@@ -56,7 +75,7 @@ class Device:
         self.hat.serial.write(f"port {self._port} ; off\r")
 
     def ensure_connected(self) -> None:
-        """Raise an exception if the sensor is not connected"""
+        """Test if the device is connected and raise an exception if it is not"""
         if not self._is_connected:
             raise Exception("No device connected")
 

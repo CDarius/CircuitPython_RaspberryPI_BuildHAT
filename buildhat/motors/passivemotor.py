@@ -1,11 +1,27 @@
-import buildhat.hat
+# SPDX-FileCopyrightText: Copyright (c) 2024 Dario Cammi
+#
+# SPDX-License-Identifier: MIT
+
 from ..device import Device
+from ..hatserialcomm import HatSerialCommunication
 from ..models.devicetype import DeviceType
 from .motor import Motor
 
 
-class PassiveMotor(Device, Motor):
-    def __init__(self, hat: buildhat.hat.Hat, port: str, type: DeviceType):
+class PassiveMotor(Motor):
+    """A Lego® passive motor
+
+    Passive motor are passive device threrefore can not return data to the hat. Passive motor have
+    no encoder are simple DC motors
+
+    .. image:: https://img.bricklink.com/ItemImage/SN/0/88011-1.png
+        :width: 400
+        :alt: Train motor
+
+    `Train motor image from Bricklink <https://www.bricklink.com/v2/catalog/catalogitem.page?S=88011-1&name=Train%20Motor&category=%5BPower%20Functions%5D%5BPowered%20Up%5D#T=S&O={%22iconly%22:0}>`_
+    """
+
+    def __init__(self, hat: HatSerialCommunication, port: int, type: int):
         super().__init__(hat, port, type)
         Motor.__init__(self, hat, port, type)
 
@@ -71,6 +87,42 @@ class PassiveMotor(Device, Motor):
 
         :param speed: Speed ranging from -1 to 1 or default_speed if None
         :raises ValueError: Occurs if invalid speed passed or motor is not connected anymore
+
+        Example code:
+
+        .. code-block:: python
+
+            import board
+            import asyncio
+            from buildhat.hat import Hat
+
+            motor_port = 0
+            buildhat = Hat(tx=board.TX, rx=board.RX, reset=board.GP23, debug=True)
+
+            async def buildhat_loop(hat):
+                while True:
+                    hat.update()
+                    await asyncio.sleep(0)
+
+            async def motor_loop(hat):
+                motor = buildhat.get_device(motor_port)
+                while True:
+                    print('Start the motor')
+                    motor.start()
+                    await asyncio.sleep(2)
+
+                    print('Stop the motor')
+                    motor.stop()
+                    await asyncio.sleep(1)
+
+            async def main():
+                buildhat_loop_task = asyncio.create_task(buildhat_loop(buildhat))
+                motor_loop_task = asyncio.create_task(motor_loop(buildhat))
+
+                await asyncio.gather(buildhat_loop_task, motor_loop_task)
+
+            asyncio.run(main())
+
         """
         self.ensure_connected()
 
@@ -80,21 +132,51 @@ class PassiveMotor(Device, Motor):
 
         if speed is None:
             speed = self._default_speed
-        else:
-            if not (-1 <= speed <= 1):
-                raise ValueError("Speed should be in range -1 to 1")
+        elif not (-1 <= speed <= 1):
+            raise ValueError("Speed should be in range -1 to 1")
         self.hat.serial.write(f"port {self._port} ; pwm ; set {speed}\r")
         self._actual_speed = speed
 
-    async def run_for_seconds(
-        self, seconds: float, speed: float | None = None, blocking: bool = True
-    ) -> None:
+    async def run_for_seconds(self, seconds: float, speed: float | None = None, blocking: bool = True) -> None:
         """Start motor
 
         :param seconds: Running time in seconds
         :param speed: Speed ranging from -1 to 1 or default_speed if None
         :param blocking: Whether call should block till finished
         :raises ValueError: Occurs if invalid speed passed or motor is not connected anymore
+
+        Example code:
+
+        .. code-block:: python
+
+            import board
+            import asyncio
+            from buildhat.hat import Hat
+
+            motor_port = 0
+            buildhat = Hat(tx=board.TX, rx=board.RX, reset=board.GP23, debug=True)
+
+            async def buildhat_loop(hat):
+                while True:
+                    hat.update()
+                    await asyncio.sleep(0)
+
+            async def motor_loop(hat):
+                motor = buildhat.get_device(motor_port)
+                while True:
+                    print("Motor running")
+                    await motor.run_for_seconds(2)
+                    print("Motor running done")
+
+                    await asyncio.sleep(1)
+
+            async def main():
+                buildhat_loop_task = asyncio.create_task(buildhat_loop(buildhat))
+                motor_loop_task = asyncio.create_task(motor_loop(buildhat))
+
+                await asyncio.gather(buildhat_loop_task, motor_loop_task)
+
+            asyncio.run(main())
         """
         self.ensure_connected()
 
@@ -104,12 +186,9 @@ class PassiveMotor(Device, Motor):
 
         if speed is None:
             speed = self._default_speed
-        else:
-            if not (-1 <= speed <= 1):
-                raise ValueError("Speed should be in range -1 to 1")
-        self.hat.serial.write(
-            f"port {self._port} ; pwm ; set pulse {speed} 0.0 {seconds} 0\r"
-        )
+        elif not (-1 <= speed <= 1):
+            raise ValueError("Speed should be in range -1 to 1")
+        self.hat.serial.write(f"port {self._port} ; pwm ; set pulse {speed} 0.0 {seconds} 0\r")
         self._actual_speed = speed
 
         if blocking:

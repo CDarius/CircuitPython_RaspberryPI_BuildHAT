@@ -1,3 +1,8 @@
+# SPDX-FileCopyrightText: Copyright (c) 2024 Dario Cammi
+#
+# SPDX-License-Identifier: MIT
+
+
 def validate_port(port: int) -> None:
     if not isinstance(port, int):
         ValueError("Port must be an integer number")

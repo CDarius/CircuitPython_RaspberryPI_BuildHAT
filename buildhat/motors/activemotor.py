@@ -1,20 +1,36 @@
-import asyncio
+# SPDX-FileCopyrightText: Copyright (c) 2024 Dario Cammi
+#
+# SPDX-License-Identifier: MIT
 
-import buildhat.hat
-from ..models.devicetype import DeviceType
-from .speedunit import SpeedUnit
-from .direction import Direction
 from ..activedevice import ActiveDevice
+from ..hatserialcomm import HatSerialCommunication
+from ..models.devicetype import DeviceType
+from .direction import Direction
 from .motor import Motor
+from .speedunit import SpeedUnit
 
 try:
     from typing import List, Tuple
-except:
+except ImportError:
     pass
 
 
 class ActiveMotor(ActiveDevice, Motor):
-    def __init__(self, hat: buildhat.hat.Hat, port: str, type: DeviceType):
+    """A Lego® active motor
+
+    Active motors are active devices, they can send and receive data (speed, position, pid parameters, etc...).
+    All active motors have an encoder therefore they measure speed and position. Some active motors have also
+    a one turn absolute encoder.
+
+    .. image:: https://img.bricklink.com/ItemImage/SN/0/45602-1.png
+        :width: 400
+        :alt: Technic XL motor
+
+    `Technic XL motor image from Bricklink <https://www.bricklink.com/v2/catalog/catalogitem.page?S=88014-1&name=Technic%20XL%20Motor&category=%5BPower%20Functions%5D%5BPowered%20Up%5D#T=S&O={%22iconly%22:0}>`_
+
+    """
+
+    def __init__(self, hat: HatSerialCommunication, port: int, type: int):
         super().__init__(hat, port, type)
         Motor.__init__(self, hat, port, type)
 
@@ -44,6 +60,7 @@ class ActiveMotor(ActiveDevice, Motor):
             self.select_read_mode(self._combi_modes[0])
 
     def deinit(self) -> None:
+        """Stop the motor and release all locks"""
         super().deinit()
         if self._read_lock.locked():
             self._run_lock.release()
@@ -62,25 +79,27 @@ class ActiveMotor(ActiveDevice, Motor):
 
     @property
     def actual_speed(self) -> int:
-        """Get motor actual speed in degrees/sec"""
+        """Return motor actual speed in degrees/sec"""
         return self._actual_speed * self._reverse_direction_factor
 
     @property
     def actual_position(self) -> int:
         """Position of motor in degress"""
-        return (
-            self._actual_position + self._position_offset
-        ) * self._reverse_direction_factor
+        return (self._actual_position + self._position_offset) * self._reverse_direction_factor
 
     @actual_position.setter
     def actual_position(self, new_position) -> None:
-        self._position_offset = (
-            int(new_position / self._reverse_direction_factor) - self._actual_position
-        )
+        self._position_offset = int(new_position / self._reverse_direction_factor) - self._actual_position
 
     @property
     def actual_absolute_position(self) -> int:
-        """Get absolute position of motor in degrees from -180 to 180"""
+        """Return absolute position of motor in degrees from -180 to 180
+
+        Not all motor have an absolute encoder. To test if a motor has an absolute encoder
+        test the value of `has_absolute_position`
+
+        :raises Exception: This motor do not provide absolute position
+        """
         if not self._has_absolute_position:
             raise Exception("This motor do not provide absolute position")
 
@@ -88,12 +107,16 @@ class ActiveMotor(ActiveDevice, Motor):
 
     @property
     def has_absolute_position(self) -> bool:
-        """Motor can provide abosuole position"""
+        """Return `True` when the motor has an absolute encoder and therefore can provide abosuole position"""
         return self._has_absolute_position
 
     @property
     def reverse_direction(self) -> bool:
-        """Reverse motor rotation direction and position counting direction"""
+        """Reverse motor rotation direction and position counting direction
+
+        When `reverse_direction` is True a positive speed make the motor running counter clockwise and the position
+        value increment when the motor spin counterclockwise
+        """
         return self._reverse_direction_factor == -1
 
     @reverse_direction.setter
@@ -132,7 +155,7 @@ class ActiveMotor(ActiveDevice, Motor):
 
     @property
     def speed_pid(self) -> Tuple[float, float, float]:
-        """Return speed PID proportional, integral and derivative factors when speed is greater than low_speed_pid_threshold_rpm"""
+        """Return speed PID proportional, integral and derivative factors"""
         return self._speed_pid_value
 
     def set_speed_pid(self, p: float = 0, i: float = 0, d: float = 0) -> None:
@@ -157,9 +180,7 @@ class ActiveMotor(ActiveDevice, Motor):
             raise ValueError("Must pass boolean")
         self._release_after_run = value
 
-    async def run_for_rotations(
-        self, rotations: int | float, speed: float | None = None, blocking: bool = True
-    ):
+    async def run_for_rotations(self, rotations: int | float, speed: float | None = None, blocking: bool = True):
         """Run motor for N rotations (position PID close loop)
 
         :param rotations: Number of rotations
@@ -167,13 +188,9 @@ class ActiveMotor(ActiveDevice, Motor):
         :param blocking: Whether call should block till finished
         :raises ValueError: Occurs if invalid speed passed
         """
-        await self.run_for_degrees(
-            degrees=int(rotations * 360), speed=speed, blocking=blocking
-        )
+        await self.run_for_degrees(degrees=int(rotations * 360), speed=speed, blocking=blocking)
 
-    async def run_for_degrees(
-        self, degrees: int | float, speed: float | None = None, blocking: bool = True
-    ):
+    async def run_for_degrees(self, degrees: int | float, speed: float | None = None, blocking: bool = True):
         """Run motor for N degrees (position PID close loop)
 
         :param degrees: Number of degrees to rotate
@@ -211,9 +228,7 @@ class ActiveMotor(ActiveDevice, Motor):
         if speed is None:
             speed = self._run_default_speed
 
-        target_position = (
-            target_position * self._reverse_direction_factor - self._position_offset
-        )
+        target_position = target_position * self._reverse_direction_factor - self._position_offset
 
         mul = 1
         if speed < 0:
@@ -224,9 +239,7 @@ class ActiveMotor(ActiveDevice, Motor):
         pos /= 360.0
         await self._run_positional_ramp(pos, newpos, speed, blocking)
 
-    async def _run_positional_ramp(
-        self, pos: float, newpos: float, speed: float, blocking: bool
-    ):
+    async def _run_positional_ramp(self, pos: float, newpos: float, speed: float, blocking: bool):
         """Ramp motor
 
         :param pos: Current motor position in decimal rotations (from preset position)
@@ -242,13 +255,9 @@ class ActiveMotor(ActiveDevice, Motor):
         speed = self._normalize_speed(speed)
         dur = abs((newpos - pos) / speed)
         kp, ki, kd = self._position_pid_value
-        self.hat.serial.write(
-            f"port {self.port}; select 0 ; selrate {self._data_update_interval}; "
-        )
+        self.hat.serial.write(f"port {self.port}; select 0 ; selrate {self._data_update_interval}; ")
         # scale unwap kp ki kd windup deadzone
-        self.hat.serial.write(
-            f"pid {self.port} 0 1 s4 0.0027777778 0 {kp} {ki} {kd} 3 0.001; "
-        )
+        self.hat.serial.write(f"pid {self.port} 0 1 s4 0.0027777778 0 {kp} {ki} {kd} 3 0.001; ")
         self.hat.serial.write(f"set ramp {pos} {newpos} {dur} 0\r")
 
         if blocking:
@@ -276,14 +285,14 @@ class ActiveMotor(ActiveDevice, Motor):
             return speed_value / 360.0
 
     def _get_speed_in_rpm(self, speed_value: float) -> float:
-        """Transform the speed from user select unit to revolutions per seconds"""
+        """Transform the speed from user select unit to revolutions per minute"""
         if self._run_speed_unit == SpeedUnit.RPM:
             return speed_value
         elif self._run_speed_unit == SpeedUnit.DGS:
             return speed_value / 60.0
 
     def _get_speed_in_dgs(self, speed_value: float) -> float:
-        """Transform the speed from user select unit to revolutions per seconds"""
+        """Transform the speed from user select unit to degrees per seconds"""
         if self._run_speed_unit == SpeedUnit.RPM:
             return speed_value * 60.0
         elif self._run_speed_unit == SpeedUnit.DGS:
@@ -336,13 +345,9 @@ class ActiveMotor(ActiveDevice, Motor):
 
         # Convert current motor position to decimal rotations from preset position to match newpos units
         pos /= 360.0
-        await self._run_positional_ramp(
-            pos=pos, newpos=newpos, speed=speed, blocking=blocking
-        )
+        await self._run_positional_ramp(pos=pos, newpos=newpos, speed=speed, blocking=blocking)
 
-    async def run_for_seconds(
-        self, seconds: float, speed: float | None = None, blocking: bool = True
-    ):
+    async def run_for_seconds(self, seconds: float, speed: float | None = None, blocking: bool = True):
         """Run motor for N seconds (speed PID close loop)
 
         :param seconds: Running time in seconds
@@ -366,7 +371,7 @@ class ActiveMotor(ActiveDevice, Motor):
             pid = f"pid_diff {self.port} 0 5 s2 0.0027777778 1 {kp} {ki} {kd} .4 0.01"
         else:
             # change speed unit to deca degrees/second
-            speed *=36
+            speed *= 36
             # scale unwap kp ki kd windup deadzone
             pid = f"pid {self.port} 0 0 s1 1 0 0.003 0.01 0 100 0.01"
         cmd = f"port {self.port} ; select 0 ; selrate {self._data_update_interval}; {pid} ; set pulse {speed} 0.0 {seconds} 0\r"
@@ -400,7 +405,7 @@ class ActiveMotor(ActiveDevice, Motor):
             pid = f"pid_diff {self.port} 0 5 s2 0.0027777778 1 {kp} {ki} {kd} .4 0.01"
         else:
             # change speed unit to deca degrees/second
-            speed *=36
+            speed *= 36
             # scale unwap kp ki kd windup deadzone
             pid = f"pid {self.port} 0 0 s1 1 0 0.003 0.01 0 100 0.01"
         cmd = f"port {self.port} ; select 0 ; selrate {self._data_update_interval}; {pid} ; set {speed}\r"
@@ -432,11 +437,7 @@ class ActiveMotor(ActiveDevice, Motor):
 
         :param speed: PWM value. Range -1 to 1
         """
-        if (
-            (not isinstance(speed, int) and not isinstance(speed, float))
-            or speed < -1
-            or speed > 1
-        ):
+        if (not isinstance(speed, int) and not isinstance(speed, float)) or speed < -1 or speed > 1:
             raise ValueError("Speed must be a number between -1 and 1")
         self.hat.serial.write(f"port {self._port} ; pwm ; set {speed}\r")
 

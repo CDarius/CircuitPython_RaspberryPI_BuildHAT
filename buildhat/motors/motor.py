@@ -1,15 +1,19 @@
+# SPDX-FileCopyrightText: Copyright (c) 2024 Dario Cammi
+#
+# SPDX-License-Identifier: MIT
+
 import asyncio
 
-import buildhat.hat
-from ..models.devicetype import DeviceType
 from ..device import Device
+from ..hatserialcomm import HatSerialCommunication
+from ..models.devicetype import DeviceType
 
 _RAMP_DONE = ": ramp done"
 _PULSE_DONE = ": pulse done"
 
 
 class Motor(Device):
-    def __init__(self, hat: buildhat.hat.Hat, port: str, type: DeviceType):
+    def __init__(self, hat: HatSerialCommunication, port: int, type: int):
         super().__init__(hat, port, type)
 
         self._run_lock = asyncio.Lock()

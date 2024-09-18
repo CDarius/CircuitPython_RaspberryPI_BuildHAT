@@ -1,8 +1,12 @@
+# SPDX-FileCopyrightText: Copyright (c) 2024 Dario Cammi
+#
+# SPDX-License-Identifier: MIT
+
 from ..models.enumstr import EnumStr
 
 
 class MatrixColor(EnumStr):
-    """3x3 matrix led color"""
+    """3x3 matrix led color enum like clas"""
 
     def __init__(self, desciption: str, color_num: int):
         super().__init__(desciption)
@@ -13,16 +17,37 @@ class MatrixColor(EnumStr):
         return self._color_num
 
     BLACK = None
+    """Black color"""
+
     BROWN = None
+    """Brown color"""
+
     MAGENTA = None
+    """Magenta color"""
+
     BLUE = None
+    """Blue color"""
+
     CYAN = None
+    """Cyan color"""
+
     PALE_GREEN = None
+    """Pale green color"""
+
     GREEN = None
+    """Green color"""
+
     YELLOW = None
+    """Yellow color"""
+
     ORANGE = None
+    """Orange color"""
+
     RED = None
+    """Red color"""
+
     WHITE = None
+    """White color"""
 
 
 MatrixColor.BLACK = MatrixColor("black", 0)

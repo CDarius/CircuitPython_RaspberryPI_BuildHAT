@@ -1,6 +1,10 @@
+# SPDX-FileCopyrightText: Copyright (c) 2024 Dario Cammi
+#
+# SPDX-License-Identifier: MIT
+
 try:
     from typing import List
-except:
+except ImportError:
     pass
 
 

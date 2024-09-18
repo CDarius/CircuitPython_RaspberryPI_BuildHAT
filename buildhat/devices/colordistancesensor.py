@@ -1,8 +1,12 @@
+# SPDX-FileCopyrightText: Copyright (c) 2024 Dario Cammi
+#
+# SPDX-License-Identifier: MIT
+
 import asyncio
 
-import buildhat.hat
-from ..models.devicetype import DeviceType
 from ..activedevice import ActiveDevice
+from ..hatserialcomm import HatSerialCommunication
+from ..models.devicetype import DeviceType
 from .color import Color
 
 try:
@@ -13,10 +17,18 @@ except ImportError:
 
 class ColorDistanceSensor(ActiveDevice):
     """Boost color & distance sensor
-    Part number: 88007
+
+    Lego® part number: 88007
+
+    .. image:: https://img.bricklink.com/ItemImage/SN/0/88007-1.png
+        :width: 400
+        :alt: Color & distance sensor
+
+    Image from `Bricklink <https://www.bricklink.com/v2/catalog/catalogitem.page?S=88007>`__
+
     """
 
-    def __init__(self, hat: buildhat.hat.Hat, port: str, type: DeviceType):
+    def __init__(self, hat: HatSerialCommunication, port: int, type: int):
         super().__init__(hat, port, type)
 
         self._read_lock = asyncio.Lock()
@@ -26,7 +38,18 @@ class ColorDistanceSensor(ActiveDevice):
 
     @property
     def num_read_average(self) -> int:
-        """Number of reads to compute the average result"""
+        """Number of reads to compute the average result. Range 1 to 25
+
+        The value of this property is used to calculate the average in the following methods:
+
+            * `get_color`
+            * `get_color_rgb`
+            * `get_ambient_light`
+            * `get_reflected_light`
+
+        .. tip:: Setting this property value to 1 disable the average calculation
+
+        """
         return self._num_read_average
 
     @num_read_average.setter
@@ -41,19 +64,17 @@ class ColorDistanceSensor(ActiveDevice):
         self.set_color(Color.BLACK)
 
     async def get_color(self) -> Color:
-        """Make multiple color reads and return the average in RBI format
-        It takes num_read_average reads to compute the average value
+        """Read the color and return the nearest Lego® color
 
-        :return: Color value
+        It takes `num_read_average` reads to compute the average color value
         """
         r, g, b = await self.get_color_rgb()
         return Color.get_color_from_rgb(r, g, b)
 
     async def get_color_rgb(self) -> Tuple[int, int, int]:
-        """Read the average color in RGB format
-        It takes num_read_average reads to compute the average value
+        """Read the color in RGB format
 
-        :return: RGB values
+        It takes `num_read_average` reads to compute the average color value
         """
         self.ensure_connected()
         self.select_read_mode(6)  # RGB I
@@ -71,22 +92,22 @@ class ColorDistanceSensor(ActiveDevice):
     def _avgrgb(self, reads: List[Tuple[int, int, int]]) -> Tuple[int, int, int]:
         readings = []
         for read in reads:
-            read = [
-                int((self._clamp(read[0], 0, 400) / 400) * 255),
-                int((self._clamp(read[1], 0, 400) / 400) * 255),
-                int((self._clamp(read[2], 0, 400) / 400) * 255),
-            ]
-            readings.append(read)
+            readings.append(
+                [
+                    int((self._clamp(read[0], 0, 400) / 400) * 255),
+                    int((self._clamp(read[1], 0, 400) / 400) * 255),
+                    int((self._clamp(read[2], 0, 400) / 400) * 255),
+                ]
+            )
         rgb = []
         for i in range(3):
             rgb.append(int(sum([rgb[i] for rgb in readings]) / len(readings)))
         return rgb
 
     async def get_ambient_light(self) -> int:
-        """Return the average ambient light in range 0-100
-        It takes num_read_average reads to compute the average value
+        """Read the intensity of the  ambient light. Range 0 to 100
 
-        :return: Ambient light
+        It takes `num_read_average` reads to compute the average color value
         """
         self.ensure_connected()
         self.select_read_mode(4)  # AMBI
@@ -100,10 +121,9 @@ class ColorDistanceSensor(ActiveDevice):
         return int(sum(reads) / self._num_read_average)
 
     async def get_reflected_light(self) -> int:
-        """Return the average reflected light in range 0-100
-        It takes num_read_average reads to compute the average value
+        """Read the intensity of reflected light. Range 0 to 100
 
-        :return: Reflected light
+        It takes `num_read_average` reads to compute the average color value
         """
         self.ensure_connected()
         self.select_read_mode(3)  # REFLT
@@ -117,20 +137,14 @@ class ColorDistanceSensor(ActiveDevice):
         return int(sum(reads) / self._num_read_average)
 
     async def get_distance(self) -> int:
-        """Return the distance from an obstacle in range 0-10
-
-        :return: Distance from obstacle
-        """
+        """Read the distance from an obstacle in range 0-10"""
         self.ensure_connected()
         self.select_read_mode(1)  # PROX
 
         return (await self._wait_for_one_update())[0]
 
     async def get_counter(self) -> int:
-        """Return the counted object
-
-        :return: Counted objects
-        """
+        """Return the counted object"""
         self.ensure_connected()
         self.select_read_mode(2)  # COUNT
 
@@ -145,9 +159,9 @@ class ColorDistanceSensor(ActiveDevice):
         self.select_read_mode(5)  # COL O
 
         color_num = 0  # black
-        if color == Color.BLUE or color == Color.CYAN:
+        if color in (Color.BLUE, Color.CYAN):
             color_num = 3  # blue
-        elif color == Color.RED or color == Color.VIOLET or color == Color.YELLOW:
+        elif color in (Color.RED, Color.VIOLET, Color.YELLOW):
             color_num = 9  # red
         elif color == Color.GREEN:
             color_num = 5  # green
@@ -166,7 +180,7 @@ class ColorDistanceSensor(ActiveDevice):
             pass
         try:
             return [int(x) for x in self._last_read.split(" ")]
-        except:
+        except Exception:
             return []
 
     def on_single_value_update(self, mode: int, value: str) -> None:

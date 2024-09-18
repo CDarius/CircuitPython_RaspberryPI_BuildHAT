@@ -1,9 +1,13 @@
+# SPDX-FileCopyrightText: Copyright (c) 2024 Dario Cammi
+#
+# SPDX-License-Identifier: MIT
+
 from .minmaxvalue import MinMaxValue
 from .modetypevalue import ModeTypeValue
 
 try:
     from typing import Dict
-except:
+except ImportError:
     pass
 
 

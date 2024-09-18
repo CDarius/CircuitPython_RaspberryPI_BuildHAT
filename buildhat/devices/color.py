@@ -1,4 +1,9 @@
+# SPDX-FileCopyrightText: Copyright (c) 2024 Dario Cammi
+#
+# SPDX-License-Identifier: MIT
+
 import math
+
 from ..models.enumstr import EnumStr
 
 try:
@@ -8,7 +13,7 @@ except ImportError:
 
 
 class Color(EnumStr):
-    """Lego color"""
+    """Lego® colors enum like class"""
 
     def __init__(self, desciption: str, r: int, g: int, b: int):
         super().__init__(desciption)
@@ -19,22 +24,36 @@ class Color(EnumStr):
         return self._rgb
 
     BLACK = None
+    """Black color"""
+
     VIOLET = None
+    """Violet color"""
+
     BLUE = None
+    """Blue color"""
+
     CYAN = None
+    """Cyan color"""
+
     GREEN = None
+    """Green color"""
+
     YELLOW = None
+    """Yellow color"""
+
     RED = None
+    """Red color"""
+
     WHITE = None
+    """White color"""
 
     def get_color_from_rgb(r: int, g: int, b: int) -> Self:
-        """Return the color from RGB
+        """Return the nearest Lego® color from and RGB color
 
-        :param r: Red
-        :param g: Green
-        :param b: Blue
-        :return: Name of the color as a string
-        :rtype: str
+        :param r: Red value
+        :param g: Green value
+        :param b: Blue value
+        :return: Nearest color
         """
         table = [
             (Color.BLACK, Color.BLACK.rgb),
@@ -49,9 +68,7 @@ class Color(EnumStr):
         near = ""
         euc = 1.0e99999  # Infinite
         for itm in table:
-            cur = math.sqrt(
-                (r - itm[1][0]) ** 2 + (g - itm[1][1]) ** 2 + (b - itm[1][2]) ** 2
-            )
+            cur = math.sqrt((r - itm[1][0]) ** 2 + (g - itm[1][1]) ** 2 + (b - itm[1][2]) ** 2)
             if cur < euc:
                 near = itm[0]
                 euc = cur

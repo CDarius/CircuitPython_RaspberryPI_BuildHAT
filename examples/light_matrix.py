@@ -1,13 +1,19 @@
-'''
-Test code for Lego Technic 3x3 Color Light Matrix
+# SPDX-FileCopyrightText: Copyright (c) 2024 Dario Cammi
+#
+# SPDX-License-Identifier: MIT
+
+"""
+Test code for Lego® Technic 3x3 Color Light Matrix
 Part number: 45608
-'''
+"""
+
+import asyncio
 
 import board
-import asyncio
-from buildhat.hat import Hat
+
 from buildhat.devices.matrixcolor import MatrixColor
 from buildhat.devices.matrixtransition import MatrixTransition
+from buildhat.hat import Hat
 
 matrix_port = 2
 
@@ -20,10 +26,13 @@ reset_pin = board.GP23
 buildhat = Hat(tx=tx_pin, rx=rx_pin, reset=reset_pin, debug=True)
 
 stop = False
+
+
 async def buildhat_loop(hat):
     while not stop:
         hat.update()
         await asyncio.sleep(0)
+
 
 async def matrix_loop(hat):
     while not stop:
@@ -31,7 +40,7 @@ async def matrix_loop(hat):
 
         matrix.display_single_color(MatrixColor.YELLOW)
         await asyncio.sleep(1)
-        
+
         for i in range(10):
             matrix.display_level_bar(i)
             await asyncio.sleep(0.3)
@@ -68,11 +77,13 @@ async def matrix_loop(hat):
         matrix.set_pixel(2, 0, MatrixColor.BLUE, 10)
         matrix.display_pixels()
         await asyncio.sleep(2)
-    
+
+
 async def main():
     buildhat_loop_task = asyncio.create_task(buildhat_loop(buildhat))
     matrix_loop_task = asyncio.create_task(matrix_loop(buildhat))
-    
+
     await asyncio.gather(buildhat_loop_task, matrix_loop_task)
-    
+
+
 asyncio.run(main())

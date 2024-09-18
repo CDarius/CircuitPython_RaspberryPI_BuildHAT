@@ -1,82 +1,94 @@
+# SPDX-FileCopyrightText: Copyright (c) 2024 Dario Cammi
+#
+# SPDX-License-Identifier: MIT
+
+
 class DeviceType:
-    # None
+    """Enum like class that list all device types"""
+
     NONE = 0
+    """None"""
 
-    # System medium motor
     SYSTEM_MEDIUM_MOTOR = 1
+    """System medium motor"""
 
-    # System train motor
     SYSTEM_TRAIN_MOTOR = 2
+    """System train motor"""
 
-    # System turntable motor
     SYSTEM_TURNABLE_MOTOR = 3
+    """System turntable motor"""
 
-    # General PWM/third party
     GENERAL_PWM = 4
+    """General PWM/third party"""
 
-    # Button/touch sensor
     BUTTON_OR_TOUCH_SENSOR = 5
+    """Button/touch sensor"""
 
-    # Simple lights
     SIMPLE_LIGHTS = 8
+    """Simple lights"""
 
-    # Future lights 1
     FUTURE_LIGHTS_1 = 9
+    """Future lights 1"""
 
-    # Future lights 2
     FUTURE_LIGHTS_2 = 10
+    """Future lights 2"""
 
-    # System future actuator (train points)
     SYSTEM_FUTURE_ACTUATOR = 11
+    """System future actuator (train points)"""
 
-    # Following ones are active
+    # -- Following types are active devices --
 
-    # WeDo tilt sensor
     WEDO_TILT_SENSOR = 0x22
+    """WeDo tilt sensor"""
 
-    # WeDo motion sensor
     WEDO_MOTION_SENSOR = 0x23
+    """WeDo motion sensor"""
 
-    # Colour and distance sensor
     COLOR_AND_DISTANCE_SENSOR = 0x25
+    """Colour and distance sensor"""
 
-    # Medium linear motor
     MEDIUM_LINEAR_MOTOR = 0x26
+    """Medium linear motor"""
 
-    # Technic large motor
     TECHNIC_LARGE_MOTOR = 0x2E
+    """Technic large motor"""
 
-    # Technic XL motor
     TECHNIC_XL_MOTOR = 0x2F
+    """Technic XL motor"""
 
-    # SPIKE Prime medium motor
     SPIKE_MEDIUM_ANGULAR_MOTOR = 0x30
+    """SPIKE Prime medium motor"""
 
-    # SPIKE Prime large motor
     SPIKE_LARGE_ANGULAR_MOTOR = 0x31
+    """SPIKE Prime large motor"""
 
-    # SPIKE Prime colour sensor
     SPIKE_COLOR_SENSOR = 0x3D
+    """SPIKE Prime colour sensor"""
 
-    # SPIKE Prime ultrasonic distance sensor
     SPIKE_ULTRASONIC_DISTANCE_SENSOR = 0x3E
+    """SPIKE Prime ultrasonic distance sensor"""
 
-    # SPIKE Prime force sensor
     SPIKE_FORCE_SENSOR = 0x3F
+    """SPIKE Prime force sensor"""
 
-    # SPIKE Essential 3x3 colour light matrix
     SPIKE_3X3_COLOR_LIGHT_MATRIX = 0x40
+    """SPIKE Essential 3x3 colour light matrix"""
 
-    # SPIKE Essential small angular motor
     SPIKE_SMALL_ANGULAR_MOTOR = 0x41
+    """SPIKE Essential small angular motor"""
 
-    # Technic medium motor
     TECHNIC_MEDIUM_ANGULAR_MOTOR = 0x4B
+    """Technic medium motor"""
 
-    # Technic large motor
     TECHNIC_LARGE_ANGULAR_MOTOR = 0x4C
+    """Technic large motor"""
 
     def get_name(type_id: int) -> str:
+        """Return the device name for a specific device ID
+
+        :param type_id: Device ID number
+        :return: Device name
+        """
         if type_id == DeviceType.NONE:
             return "None"
         elif type_id == DeviceType.SYSTEM_MEDIUM_MOTOR:
@@ -131,6 +143,11 @@ class DeviceType:
             return "Unknown"
 
     def is_motor(type_id: int) -> bool:
+        """Return true if the device ID belong to a motor
+
+        :param type_id: Device ID to test
+        :returns: True when the ID is a motor device ID
+        """
         return type_id in _ALL_MOTORS
 
 

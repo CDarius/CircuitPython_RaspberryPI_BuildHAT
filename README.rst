@@ -23,7 +23,7 @@ Introduction
 
 CircuitPython driver for RaspberryPi BuildHAT
 
-.. image:: images/video_preview.png
+.. image:: https://github.com/CDarius/CircuitPython_RaspberryPI_BuildHAT/blob/main/docs/images/video_preview.png?raw=true
     :target: https://youtu.be/DlgysdjXWgY?si=tdnGjpXb8YGwaNOh
     :alt: Preview YouTube video
 
